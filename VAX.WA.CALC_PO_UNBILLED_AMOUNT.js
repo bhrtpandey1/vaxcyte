@@ -3,7 +3,7 @@
  *
  * Name: VAX.WA.CALC_PO_UNBILLED_AMOUNT.js
  * Script Type: WorkflowActionScript
- * @version 1.0.4
+ * @version 1.0.5
  *
  * @NApiVersion 2.1
  * @NScriptType WorkflowActionScript
@@ -45,9 +45,22 @@ define(['N/record', 'N/search'],
         var poAmount = scriptContext.newRecord.getValue({ fieldId: "usertotal" });
         log.debug({ title: title, details: { poAmount: poAmount } });
 
-        if( poAmount == '' || isNaN(poAmount)){
-           poAmount = fetchPOAmount(poId);
-           log.debug({ title: title, details: {"userTotal" : "blank", poAmount: poAmount } });
+        var custbody_po_chg_order_amount, custbody_po_last_approved_amount = 0.00; 
+
+        //if( poAmount == '' || isNaN(poAmount))
+        if (poId && poId != '')
+        {
+           //poAmount = fetchPOAmount(poId);
+           var poJSON = fetchPOAmount(poId);
+            log.debug({ title: title, details: { poJSON } });
+
+           if(poJSON.poAmount != null)
+           {
+             poAmount = poJSON.poAmount;
+             custbody_po_chg_order_amount = (poJSON.custbody_po_chg_order_amount) ? poJSON.custbody_po_chg_order_amount : 0.00;
+             custbody_po_last_approved_amount = poJSON.custbody_po_last_approved_amount;
+           }
+           log.debug({ title: title, details: {"userTotal" : "blank61",  poAmount, custbody_po_chg_order_amount, custbody_po_last_approved_amount } });
         }
 
         if (poId && poId != '' && parseFloat(poAmount) > 0) {
@@ -57,10 +70,15 @@ define(['N/record', 'N/search'],
           var unBilledAmount = 0.00;
           unBilledAmount = parseFloat(poAmount) - parseFloat(totalBillAmount);
 
+          //poCompValue = {custbody_po_unbilled_amount} 
+          // + (({appliedtotransaction.custbody_po_last_approved_amount} + {appliedtotransaction.custbody_po_chg_order_amount}) * .2)
+          var poCompValue = unBilledAmount + ((custbody_po_last_approved_amount + custbody_po_chg_order_amount) * .2);
+
           //var unBilledAmount = fetchUnbilledPOAmount(poId, poAmount);
-          log.debug({ title: title, details: { unBilledAmount: unBilledAmount } });
+          log.debug({ title: title, details: { unBilledAmount: unBilledAmount, poCompValue } });
 
           scriptContext.newRecord.setValue({ fieldId: 'custbody_po_unbilled_amount', value: unBilledAmount.toFixed(2) });
+          scriptContext.newRecord.setValue({ fieldId: 'custbody_po_comp_value', value: poCompValue.toFixed(2) });
         }
 
       } catch (err) {
@@ -183,7 +201,8 @@ define(['N/record', 'N/search'],
 
     function fetchPOAmount(poId) {
 
-      var title = 'fetchPOAmount';     
+      var title = 'fetchPOAmount'; 
+      var returnData   =  {};    
       var poAmount = 0.00;
 
       try {
@@ -205,7 +224,17 @@ define(['N/record', 'N/search'],
                   name: "formulacurrency",
                   formula: "{fxamount}",
                   label: "PO FX Amount"
-               })
+               }),
+               search.createColumn({
+                  name: "custbody_po_last_approved_amount",
+                 // formula: "{fxamount}",
+                  label: "custbody_po_last_approved_amount"
+               }),
+               search.createColumn({
+                  name: "custbody_po_chg_order_amount",
+                 // formula: "{fxamount}",
+                  label: "custbody_po_chg_order_amount"
+               }),
 
               ]
           });
@@ -216,17 +245,34 @@ define(['N/record', 'N/search'],
           if (searchResultCount > 0) {
             poSearchObj.run().each(function (result) {              // .run().each has a limit of 4,000 results
 
+              log.debug({ title : "poSearchObj result", details : {result}});
               poAmount = result.getValue({  name: "formulacurrency",
                 formula: "{fxamount}",
                 label: "PO FX Amount"
-              });             
+              }); 
+              
+              var custbody_po_last_approved_amount = result.getValue({ name: "custbody_po_last_approved_amount", label : "custbody_po_last_approved_amount"});
+              var custbody_po_chg_order_amount = result.getValue({ name: "custbody_po_chg_order_amount", label : "custbody_po_chg_order_amount" });
+
+              log.debug({title, details: {custbody_po_last_approved_amount, custbody_po_chg_order_amount }});
+
+              returnData.poAmount = poAmount;
+              returnData.custbody_po_last_approved_amount = custbody_po_last_approved_amount;
+              returnData.custbody_po_chg_order_amount = (custbody_po_chg_order_amount && custbody_po_chg_order_amount != '.00') ? custbody_po_chg_order_amount : 0.00;
+              
+                log.debug({title, details: {returnData }});
+              // returnData = {
+              //   poAmount,
+              //   custbody_po_last_approved_amount,
+              //   custbody_po_chg_order_amount
+              // }
 
               return false;
             });
           }
         }
       
-        return poAmount;
+        return returnData;
 
       } catch (err) {
         log.error({ title: 'error fetchPOAmount', details: JSON.stringify(err) });
