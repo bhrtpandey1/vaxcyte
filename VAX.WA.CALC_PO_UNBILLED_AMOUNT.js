@@ -48,7 +48,6 @@ define(['N/record', 'N/search'],
         var custbody_po_chg_order_amount, custbody_po_last_approved_amount = 0.00; 
 
         //if( poAmount == '' || isNaN(poAmount))
-        if (poId && poId != '')
         {
            //poAmount = fetchPOAmount(poId);
            var poJSON = fetchPOAmount(poId);
@@ -72,13 +71,17 @@ define(['N/record', 'N/search'],
 
           //poCompValue = {custbody_po_unbilled_amount} 
           // + (({appliedtotransaction.custbody_po_last_approved_amount} + {appliedtotransaction.custbody_po_chg_order_amount}) * .2)
-          var poCompValue = unBilledAmount + ((custbody_po_last_approved_amount + custbody_po_chg_order_amount) * .2);
+          var poCompValue = 0.00;
+          poCompValue = parseFloat(unBilledAmount) + ((parseFloat(custbody_po_last_approved_amount) + parseFloat(custbody_po_chg_order_amount)) * .2);
 
           //var unBilledAmount = fetchUnbilledPOAmount(poId, poAmount);
           log.debug({ title: title, details: { unBilledAmount: unBilledAmount, poCompValue } });
 
           scriptContext.newRecord.setValue({ fieldId: 'custbody_po_unbilled_amount', value: unBilledAmount.toFixed(2) });
-          scriptContext.newRecord.setValue({ fieldId: 'custbody_po_comp_value', value: poCompValue.toFixed(2) });
+          //if(!poCompValue){
+             scriptContext.newRecord.setValue({ fieldId: 'custbody_po_comp_value', value: poCompValue.toFixed(2) });
+          //}
+          
         }
 
       } catch (err) {
