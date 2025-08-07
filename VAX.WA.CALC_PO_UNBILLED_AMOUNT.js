@@ -3,7 +3,7 @@
  *
  * Name: VAX.WA.CALC_PO_UNBILLED_AMOUNT.js
  * Script Type: WorkflowActionScript
- * @version 1.0.5
+ * @version 1.0.6
  *
  * @NApiVersion 2.1
  * @NScriptType WorkflowActionScript
